@@ -4,7 +4,6 @@ import javax.swing.JFrame;
 import javax.swing.JOptionPane;
 
 /**
- *
  * @Eliezer
  */
 public class frmPrincipal extends javax.swing.JFrame {
