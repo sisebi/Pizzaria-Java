@@ -12,9 +12,11 @@ import br.com.pizzaria.Http.PessoaHttp;
 import java.awt.Cursor;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.swing.JOptionPane;
+import javax.swing.JTable;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.TableRowSorter;
 
@@ -60,21 +62,17 @@ public class frmCadPessoa extends javax.swing.JInternalFrame {
         DefaultTableModel dbGrid = (DefaultTableModel) jTable_Itens.getModel();
         dbGrid.setNumRows(0);
         for (PessoaHttp p : this.listaNomes) {
-            dbGrid.addColumn(new String[]{http.getCpf(),
-                http.getNome(),
-                http.getEmail(),
-                http.getFone()});           //resolver
+            dbGrid.addRow(new Object[]{p.getCpf(),
+                p.getNome(),
+                p.getEmail(),
+                p.getFone()});           
         }        
         
-//        dbGrid.addColumn(new String[]{http.getCpf(),
-//                http.getNome(),
-//                http.getEmail(),
-//                http.getFone()});
     }
 
     private void limparCampos() {
         this.setCursor(cursorSql);
-        txtCpf.setText("");
+        txtCpf.setValue(null);
         txtRg.setText("");
         txtNome.setText("");
         txtTipo.setSelectedIndex(-1);
@@ -88,6 +86,7 @@ public class frmCadPessoa extends javax.swing.JInternalFrame {
         txtBairro.setText("");
         txtCidade.setText("");
         txtUF.setText("");
+        txtBuscarNome.setText("");
         this.setCursor(cursorDefault);
     }
 
@@ -180,6 +179,12 @@ public class frmCadPessoa extends javax.swing.JInternalFrame {
     private void buscarCpf(String cpf) {
         try {
             this.http = control.getCpf(cpf);
+            if (this.http.getNome().isEmpty()){
+                JOptionPane.showMessageDialog(null, "Cpf não encontrado !");
+            }else{
+                this.listaNomes.clear();
+                this.listaNomes.add(this.http);
+            }
         } catch (ErroSistema ex) {
             Logger.getLogger(frmCadPessoa.class.getName()).log(Level.SEVERE, null, ex);
         }
@@ -189,6 +194,7 @@ public class frmCadPessoa extends javax.swing.JInternalFrame {
         try {
             this.listaNomes.clear();
             this.listaNomes = this.control.listaNome(nomes);
+            jTable_Itens.grabFocus();
         } catch (ErroSistema ex) {
             Logger.getLogger(frmCadPessoa.class.getName()).log(Level.SEVERE, null, ex);
         }
@@ -203,7 +209,7 @@ public class frmCadPessoa extends javax.swing.JInternalFrame {
     }
 
     public void novo() {
-        this.http = new PessoaHttp(0);
+        this.http = new PessoaHttp();
         limparCampos();
         limparGrid();
         txtCpf.grabFocus();
@@ -219,11 +225,9 @@ public class frmCadPessoa extends javax.swing.JInternalFrame {
             if (this.http.getId().equals(0)
                     || this.http.getId().equals(null)
                     || this.http.getId().equals("")) {
-//                JOptionPane.showMessageDialog(null, "PORRA POST !");
                 this.control.postPessoa(http);
                 buscarCpf(this.http.getCpf());
             } else {
-//                JOptionPane.showMessageDialog(null, "PORRA PUT !");
                 this.control.putPessoa(http);
             }
             JOptionPane.showMessageDialog(null, "Salvo com sucesso !");
@@ -447,19 +451,22 @@ public class frmCadPessoa extends javax.swing.JInternalFrame {
                 "Cpf", "Nome", "eMail", "Fone"
             }
         ) {
-            Class[] types = new Class [] {
-                java.lang.String.class, java.lang.String.class, java.lang.String.class, java.lang.String.class
-            };
             boolean[] canEdit = new boolean [] {
                 false, false, false, false
             };
 
-            public Class getColumnClass(int columnIndex) {
-                return types [columnIndex];
-            }
-
             public boolean isCellEditable(int rowIndex, int columnIndex) {
                 return canEdit [columnIndex];
+            }
+        });
+        jTable_Itens.addFocusListener(new java.awt.event.FocusAdapter() {
+            public void focusGained(java.awt.event.FocusEvent evt) {
+                jTable_ItensFocusGained(evt);
+            }
+        });
+        jTable_Itens.addMouseListener(new java.awt.event.MouseAdapter() {
+            public void mouseClicked(java.awt.event.MouseEvent evt) {
+                jTable_ItensMouseClicked(evt);
             }
         });
         jScrollPane1.setViewportView(jTable_Itens);
@@ -477,6 +484,17 @@ public class frmCadPessoa extends javax.swing.JInternalFrame {
 
         jLabel1.setFont(new java.awt.Font("Tahoma", 1, 11)); // NOI18N
         jLabel1.setText("Nome :");
+
+        txtBuscarNome.addFocusListener(new java.awt.event.FocusAdapter() {
+            public void focusGained(java.awt.event.FocusEvent evt) {
+                txtBuscarNomeFocusGained(evt);
+            }
+        });
+        txtBuscarNome.addMouseListener(new java.awt.event.MouseAdapter() {
+            public void mouseClicked(java.awt.event.MouseEvent evt) {
+                txtBuscarNomeMouseClicked(evt);
+            }
+        });
 
         btnBuscar.setFont(new java.awt.Font("Tahoma", 1, 11)); // NOI18N
         btnBuscar.setText("Buscar");
@@ -695,7 +713,9 @@ public class frmCadPessoa extends javax.swing.JInternalFrame {
         }
         String cpf = txtCpf.getText().replace(".", "").trim();
         cpf = cpf.replace("-", "").trim();
-
+        if (cpf.isEmpty()){
+            return;
+        }
         if (cpf.length() < 11) {
             JOptionPane.showMessageDialog(null, "CPF Invalido !");
             return;
@@ -762,16 +782,73 @@ public class frmCadPessoa extends javax.swing.JInternalFrame {
     private void btnBuscarActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnBuscarActionPerformed
         if (txtBuscarNome.getText().equals("")) {
             JOptionPane.showMessageDialog(null, "favor preencher campo busca !");
-            txtBuscarNome.grabFocus();
             return;
         }
         try {
             buscarNomes(txtBuscarNome.getText());
             carregarGrid();
+            jTable_Itens.setRowSelectionInterval(0, 0);
+            txtBuscarNome.grabFocus();
         } catch (Exception e) {
             JOptionPane.showMessageDialog(null, "Erro ao buscar: " + e.getMessage());
         }
     }//GEN-LAST:event_btnBuscarActionPerformed
+
+    private void jTable_ItensMouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_jTable_ItensMouseClicked
+        if (jTable_Itens.getSelectedRow() != -1){
+            for (PessoaHttp p : this.listaNomes){
+                if (p.getCpf().equals(jTable_Itens.getValueAt(jTable_Itens.getSelectedRow(),0).toString())){
+                    txtCpf.setText(p.getCpf());
+                    txtRg.setText(p.getRg());
+                    txtNome.setText(p.getNome());
+                    txtTipo.setSelectedItem(p.getTipo());
+                    txtEmail.setText(p.getEmail());
+                    txtFone.setText(p.getFone());
+                    txtCelular.setText(p.getCelular());
+                    txtCep.setText(p.getCep());
+                    txtRua.setText(p.getRua());
+                    txtNr.setText(p.getNr());
+                    txtComplemento.setText(p.getComplemento());
+                    txtBairro.setText(p.getBairro());
+                    txtCidade.setText(p.getCidade());
+                    txtUF.setText(p.getUf());
+                    this.http = p;
+                }
+            }
+        }
+    }//GEN-LAST:event_jTable_ItensMouseClicked
+
+    private void txtBuscarNomeMouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_txtBuscarNomeMouseClicked
+//        this.opcaoForm = "SAIR";
+    }//GEN-LAST:event_txtBuscarNomeMouseClicked
+
+    private void txtBuscarNomeFocusGained(java.awt.event.FocusEvent evt) {//GEN-FIRST:event_txtBuscarNomeFocusGained
+//        this.opcaoForm = "SAIR";
+    }//GEN-LAST:event_txtBuscarNomeFocusGained
+
+    private void jTable_ItensFocusGained(java.awt.event.FocusEvent evt) {//GEN-FIRST:event_jTable_ItensFocusGained
+        if (jTable_Itens.getSelectedRow() != -1){
+            for (PessoaHttp p : this.listaNomes){
+                if (p.getCpf().equals(jTable_Itens.getValueAt(jTable_Itens.getSelectedRow(),0).toString())){
+                    txtCpf.setText(p.getCpf());
+                    txtRg.setText(p.getRg());
+                    txtNome.setText(p.getNome());
+                    txtTipo.setSelectedItem(p.getTipo());
+                    txtEmail.setText(p.getEmail());
+                    txtFone.setText(p.getFone());
+                    txtCelular.setText(p.getCelular());
+                    txtCep.setText(p.getCep());
+                    txtRua.setText(p.getRua());
+                    txtNr.setText(p.getNr());
+                    txtComplemento.setText(p.getComplemento());
+                    txtBairro.setText(p.getBairro());
+                    txtCidade.setText(p.getCidade());
+                    txtUF.setText(p.getUf());
+                    this.http = p;
+                }
+            }
+        }
+    }//GEN-LAST:event_jTable_ItensFocusGained
 
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
